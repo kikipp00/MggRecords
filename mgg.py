@@ -51,6 +51,7 @@ start_time = time.time()
 init_run = True
 max_page = 1
 page_no = 1
+
 file = open('test.csv', 'w')
 writer = csv.writer(file)
 writer.writerow(['TITLE', 'LINK', 'AUTHOR(S)', 'ALT-TITLE(S)'])
@@ -64,17 +65,18 @@ while page_no <= max_page:
     if init_run:
         init_run = False
         option = soup.select('li > span > select > option')  # collect all page #s
-        if len(option) > 0: #one page
+        if len(option) > 0: # one page doesn't display options
             max_page = int(option[len(option) - 1].text.strip())  # get the last page #
 
     # traverse every manga in list
     threads = []
-    for entry in soup.findAll("h3", attrs={'class': 'title'}):  # entries w/ <h3 class=title #todo: threads!
+    for entry in soup.findAll("h3", attrs={'class': 'title'}):  # entries w/ <h3 class=title
         threads.append(threading.Thread(target=write_entry, args=(writer, entry, url)))
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
+
 file.close()
 end_time = time.time()
 elapsed_time = end_time - start_time
