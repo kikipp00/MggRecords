@@ -64,7 +64,8 @@ while page_no <= max_page:
     if init_run:
         init_run = False
         option = soup.select('li > span > select > option')  # collect all page #s
-        max_page = int(option[len(option) - 1].text.strip())  # get the last page #
+        if len(option) > 0: #one page
+            max_page = int(option[len(option) - 1].text.strip())  # get the last page #
 
     # traverse every manga in list
     threads = []
