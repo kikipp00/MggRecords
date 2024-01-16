@@ -43,11 +43,11 @@ def scan_entry(entry):
                 if item != "None":  # todo: fix whitespace inbtwn (https://www.mangago.me/read-manga/the_evil_empress_loves_me_so_much/)
                     alt_titles = item
             break
-    return title, authors, alt_titles
+    return title, url, authors, alt_titles
 
 
-def write_entry(writer, entry, url):
-    title, authors, alt_titles = scan_entry(entry)
+def write_entry(writer, entry):
+    title, url, authors, alt_titles = scan_entry(entry)
     with lock:
         writer.writerow([title, url, authors, alt_titles])
 
@@ -79,7 +79,7 @@ def main():
             with ThreadPoolExecutor(max_workers=10) as executor:
                 threads = []
                 for entry in soup.findAll("h3", attrs={'class': 'title'}):
-                    threads.append(executor.submit(write_entry, writer, entry, url))
+                    threads.append(executor.submit(write_entry, writer, entry))
 
     end_time = time.time()
     elapsed_time = end_time - start_time
