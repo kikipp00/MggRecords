@@ -5,9 +5,9 @@ import csv
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import requests
-import ssl
 
 # uncomment if ssl error
+# import ssl
 # ssl._create_default_https_context = ssl._create_unverified_context
 
 lock = threading.Lock()
@@ -59,18 +59,14 @@ def main():
     max_page = 1
     page_no = 1
 
-    with open('test.csv', 'w', newline='') as file:
+    with open('test.csv', 'w', newline='') as file: # don't need to explicitly close bc "with"
         writer = csv.writer(file)
         writer.writerow(['TITLE', 'LINK', 'AUTHOR(S)', 'ALT-TITLE(S)'])
 
         # traverse all pages
         while page_no <= max_page:
-            url = f"https://www.mangago.me/home/people/29556/manga/1/?page={page_no}"
+            url = f"https://www.mangago.me/home/people/2560141/manga/1/?page={page_no}" # todo: 1 = want, 2 = reading, 3 = read
             page_no += 1
-
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            session = requests.Session()
-            session.headers.update(headers)
             soup = bs_webpage(url, 'lxml')
 
             # find max # of pages
@@ -81,14 +77,10 @@ def main():
                     max_page = int(option[len(option) - 1].text.strip())
 
             # traverse every manga in list
-            threads = []
-            for entry in soup.findAll("h3", attrs={'class': 'title'}):
-                threads.append((entry, url))
-
-            # threadpool
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                for entry, url in threads:
-                    executor.submit(write_entry, writer, entry, url)
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                threads = []
+                for entry in soup.findAll("h3", attrs={'class': 'title'}):
+                    threads.append(executor.submit(write_entry, writer, entry, url))
 
     end_time = time.time()
     elapsed_time = end_time - start_time
