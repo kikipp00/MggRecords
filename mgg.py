@@ -4,7 +4,6 @@ import time
 import csv
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import requests
 
 # uncomment if ssl error
 # import ssl
