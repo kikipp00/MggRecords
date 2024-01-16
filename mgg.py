@@ -48,10 +48,10 @@ def scan_entry(entry):
 
 
 def write_entry(writer, entry, url):
-    # Function to write manga entry information to a CSV file
     title, authors, alt_titles = scan_entry(entry)
     with lock:
         writer.writerow([title, url, authors, alt_titles])
+
 
 def main():
     start_time = time.time()
@@ -86,13 +86,14 @@ def main():
                 threads.append((entry, url))
 
             # threadpool
-            with ThreadPoolExecutor(max_workers=5) as executor:  # becareful of worker add a sleep if needed
+            with ThreadPoolExecutor(max_workers=5) as executor:
                 for entry, url in threads:
                     executor.submit(write_entry, writer, entry, url)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Elapsed Time: {elapsed_time} seconds")
+
 
 if __name__ == "__main__":
     main()
