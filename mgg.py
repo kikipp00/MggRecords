@@ -2,19 +2,28 @@ from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
 import time
 import csv
+from concurrent.futures import ThreadPoolExecutor
 import threading
+import requests
+
+# uncomment if ssl error
+# import ssl
+# ssl._create_default_https_context = ssl._create_unverified_context
 
 lock = threading.Lock()
 
+
 def bs_webpage(url, parser):
-    req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})  # make req disguised as Firefox request (403 otherwise)
-    webpage = urlopen(req).read()  # read response (html doc)
-    return BeautifulSoup(webpage, parser)  # make it parse-able for bs
+    # Function to fetch webpage content using a given URL and parser
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    req = Request(url, headers=headers)
+    webpage = urlopen(req).read()
+    return BeautifulSoup(webpage, parser)
+
 
 def scan_entry(entry):
     authors = ""
     alt_titles = ""
-
     url = entry.find('a')['href']  # get manga link
     print(url)
     soup = bs_webpage(url, 'lxml')
@@ -37,47 +46,46 @@ def scan_entry(entry):
             break
     return title, authors, alt_titles
 
+
 def write_entry(writer, entry, url):
     title, authors, alt_titles = scan_entry(entry)
-    lock.acquire()
-    try:
+    with lock:
         writer.writerow([title, url, authors, alt_titles])
-    finally:
-        lock.release()
 
 
-start_time = time.time()
+def main():
+    start_time = time.time()
+    init_run = True
+    max_page = 1
+    page_no = 1
 
-init_run = True
-max_page = 1
-page_no = 1
+    with open('test.csv', 'w', newline='') as file: # don't need to explicitly close bc "with"
+        writer = csv.writer(file)
+        writer.writerow(['TITLE', 'LINK', 'AUTHOR(S)', 'ALT-TITLE(S)'])
 
-file = open('test.csv', 'w')
-writer = csv.writer(file)
-writer.writerow(['TITLE', 'LINK', 'AUTHOR(S)', 'ALT-TITLE(S)'])
+        # traverse all pages
+        while page_no <= max_page:
+            url = f"https://www.mangago.me/home/people/2560141/manga/1/?page={page_no}" # todo: 1 = want, 2 = reading, 3 = read
+            page_no += 1
+            soup = bs_webpage(url, 'lxml')
 
-while page_no <= max_page:
-    url = f"https://www.mangago.me/home/people/29556/manga/1/?page={page_no}"  # todo: 1 = want, 2 = reading, 3 = read
-    page_no += 1
-    soup = bs_webpage(url, 'lxml')  # lxml is faster
+            # find max # of pages
+            if init_run:
+                init_run = False
+                option = soup.select('li > span > select > option')
+                if len(option) > 0:
+                    max_page = int(option[len(option) - 1].text.strip())
 
-    # find max # of pages
-    if init_run:
-        init_run = False
-        option = soup.select('li > span > select > option')  # collect all page #s
-        if len(option) > 0: # one page doesn't display options
-            max_page = int(option[len(option) - 1].text.strip())  # get the last page #
+            # traverse every manga in list
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                threads = []
+                for entry in soup.findAll("h3", attrs={'class': 'title'}):
+                    threads.append(executor.submit(write_entry, writer, entry, url))
 
-    # traverse every manga in list
-    threads = []
-    for entry in soup.findAll("h3", attrs={'class': 'title'}):  # entries w/ <h3 class=title
-        threads.append(threading.Thread(target=write_entry, args=(writer, entry, url)))
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Elapsed Time: {elapsed_time} seconds")
 
-file.close()
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(elapsed_time)
+
+if __name__ == "__main__":
+    main()
