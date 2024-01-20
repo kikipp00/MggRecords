@@ -11,7 +11,7 @@ from sqlite3 import Error
 # ssl._create_default_https_context = ssl._create_unverified_context
 
 lock = threading.Lock()
-database = "mangago.db"
+database = "mgg.db"
 
 
 # create a database connection to a SQLite database
@@ -47,7 +47,7 @@ def scan_entry(entry):
     print(url)
     soup = bs_webpage(url, 'lxml')
 
-    title = soup.find('div', attrs={'class': "w-title"}).text.strip()  # strip removes whitespace on front and end
+    title = soup.find('div', attrs={'class': "w-title"}).text.strip()  # strip removes whitespace on front and end #todo: remove (Yaoi)
     for label in soup.select('td > label'):
         if label.string.strip() == "Author:":
             for item in label.findParent().find_all('a'):  # go back to parent td and get all <a tags
@@ -74,11 +74,11 @@ def insert_entry(entry, category):
             items = (title, url, authors, alt_titles)
             cur = conn.cursor()
             if category == 1:
-                cur.execute("INSERT INTO Want(name, link, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO Want(title, url, author, alt_title) VALUES (?,?,?,?)", items)
             elif category == 2:
-                cur.execute("INSERT INTO Reading(name, link, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO Reading(title, url, author, alt_title) VALUES (?,?,?,?)", items)
             else:
-                cur.execute("INSERT INTO AlreadyRead(name, link, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO AlreadyRead(title, url, author, alt_title) VALUES (?,?,?,?)", items)
             conn.commit()
 
 
@@ -86,23 +86,24 @@ def main():
     start_time = time.time()
     conn = create_connection(database)
     with conn:
+        # I think titles have to be unique in mgg
         table_want = """ CREATE TABLE IF NOT EXISTS Want(
-                                                    name text NOT NULL PRIMARY KEY,
-                                                    link text,
+                                                    title text NOT NULL PRIMARY KEY,
+                                                    url text,
                                                     author text,
                                                     alt_title text
                                                 ); """
         table_reading = """ CREATE TABLE IF NOT EXISTS Reading(
-                                                            name text NOT NULL PRIMARY KEY,
-                                                            link text,
+                                                            title text NOT NULL PRIMARY KEY,
+                                                            url text,
                                                             author text,
                                                             alt_title text
                                                         ); """
         table_read = """ CREATE TABLE IF NOT EXISTS AlreadyRead(
-                                                                    name text NOT NULL PRIMARY KEY,
-                                                                    link text,
-                                                                    author text,
-                                                                    alt_title text
+                                                            title text NOT NULL PRIMARY KEY,
+                                                            url text,
+                                                            author text,
+                                                            alt_title text
                                                                 ); """
         create_table(conn, table_want)
         create_table(conn, table_reading)
