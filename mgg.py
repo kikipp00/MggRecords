@@ -4,12 +4,39 @@ import time
 import csv
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import sqlite3
+from sqlite3 import Error
 
 # uncomment if ssl error
 # import ssl
 # ssl._create_default_https_context = ssl._create_unverified_context
 
 lock = threading.Lock()
+
+
+# create a database connection to a SQLite database
+def create_connection(db_file):
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+    except Error as e:
+        print(e)
+    return conn
+
+
+def create_table(conn, create_table_sql):
+    try:
+        c = conn.cursor()
+        c.execute(create_table_sql)
+    except Error as e:
+        print(e)
+
+
+def add_row(conn, items):
+    sql = "INSERT INTO manga(name,link,author,alt_title) VALUES (?,?,?,?)"
+    cur = conn.cursor()
+    cur.execute(sql, items)
+    conn.commit()
 
 
 def bs_webpage(url, parser):
@@ -50,21 +77,35 @@ def write_entry(writer, entry):
     title, url, authors, alt_titles = scan_entry(entry)
     with lock:
         writer.writerow([title, url, authors, alt_titles])
+        conn = create_connection("mangago.db")
+        with conn:
+            row = (title, url, authors, alt_titles)
+            add_row(conn, row)
 
 
 def main():
+    conn = create_connection("mangago.db")
+    with conn:
+        table = """ CREATE TABLE IF NOT EXISTS manga (
+                                                    name text NOT NULL PRIMARY KEY,
+                                                    link text,
+                                                    author text,
+                                                    alt_title text
+                                                ); """
+        create_table(conn, table)
+
     start_time = time.time()
     init_run = True
     max_page = 1
     page_no = 1
 
-    with open('test.csv', 'w', newline='') as file: # don't need to explicitly close bc "with"
+    with open('test.csv', 'w', newline='') as file:  # don't need to explicitly close bc "with"
         writer = csv.writer(file)
         writer.writerow(['TITLE', 'LINK', 'AUTHOR(S)', 'ALT-TITLE(S)'])
 
         # traverse all pages
         while page_no <= max_page:
-            url = f"https://www.mangago.me/home/people/2560141/manga/1/?page={page_no}" # todo: 1 = want, 2 = reading, 3 = read
+            url = f"https://www.mangago.me/home/people/29556/manga/1/?page={page_no}"  # todo: 1 = want, 2 = reading, 3 = read
             page_no += 1
             soup = bs_webpage(url, 'lxml')
 
