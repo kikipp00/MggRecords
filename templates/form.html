@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        /* no increment arrows in number field */
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+               -webkit-appearance: none;
+                margin: 0;
+        }
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <form action="/data" method = "POST">
+        User id: <input type = "number" name = "userid" required/><br>
+        <input type="checkbox" id="want" name="want" value="want">
+        <label for="want"> Want</label><br>
+        <input type="checkbox" id="reading" name="reading" value="reading">
+        <label for="reading"> Reading</label><br>
+        <input type="checkbox" id="read" name="read" value="read">
+        <label for="read"> Read</label><br>
+        <input type = "submit" value = "Submit" />
+    </form>
+</body>
+</html>

@@ -24,6 +24,14 @@ def create_connection(db_file):
     return conn
 
 
+# initialize db
+def init_db():
+    conn = create_connection(database)
+    with conn:
+        with open('schema.sql') as f:
+            conn.executescript(f.read())
+
+
 # bs parse page
 def bs_webpage(url, parser):
     # Function to fetch webpage content using a given URL and parser
@@ -78,35 +86,37 @@ def insert_entry(entry, category):
             conn.commit()
 
 
+# grab all manga from category
+def scan_category(category, userid):
+    init_run = True
+    max_page = 1
+    page_no = 1
+    while page_no <= max_page:
+        url = f"https://www.mangago.me/home/people/{userid}/manga/{category}/?page={page_no}"
+        page_no += 1
+        soup = bs_webpage(url, 'lxml')
+
+        # find max # of pages
+        if init_run:
+            init_run = False
+            option = soup.select('li > span > select > option')
+            if len(option) > 0:
+                max_page = int(option[len(option) - 1].text.strip())
+
+        # traverse every manga in list
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            threads = []
+            for entry in soup.findAll("h3", attrs={'class': 'title'}):
+                threads.append(executor.submit(insert_entry, entry, category))
+
+
 def main():
     start_time = time.time()
-    conn = create_connection(database)
-    with conn:
-        with open('schema.sql') as f:
-            conn.executescript(f.read())
+    init_db()
 
-    # traverse all pages
-    for category in range(1, 4): # 1: Want, 2: Reading, 3: Already Read
-        init_run = True
-        max_page = 1
-        page_no = 1
-        while page_no <= max_page:
-            url = f"https://www.mangago.me/home/people/3306689/manga/{category}/?page={page_no}"
-            page_no += 1
-            soup = bs_webpage(url, 'lxml')
-
-            # find max # of pages
-            if init_run:
-                init_run = False
-                option = soup.select('li > span > select > option')
-                if len(option) > 0:
-                    max_page = int(option[len(option) - 1].text.strip())
-
-            # traverse every manga in list
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                threads = []
-                for entry in soup.findAll("h3", attrs={'class': 'title'}):
-                    threads.append(executor.submit(insert_entry, entry, category))
+    # traverse all categories
+    for category in range(1, 4):  # 1: Want, 2: Reading, 3: Already Read
+        scan_category(category, "3306689")
 
     end_time = time.time()
     elapsed_time = end_time - start_time
