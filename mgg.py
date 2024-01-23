@@ -35,9 +35,13 @@ def init_db():
 # bs parse page
 def bs_webpage(url, parser):
     # Function to fetch webpage content using a given URL and parser
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    req = Request(url, headers=headers)
-    webpage = urlopen(req).read()
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        req = Request(url, headers=headers)
+        webpage = urlopen(req).read()
+    except Exception as e:
+        print(e)
+        return False
     return BeautifulSoup(webpage, parser)
 
 
@@ -48,6 +52,8 @@ def scan_entry(entry):
     url = entry.find('a')['href']  # get manga link
     print(url)
     soup = bs_webpage(url, 'lxml')
+    if not soup:  # stop if error
+        return False
 
     title = soup.find('div', attrs={
         'class': "w-title"}).text.strip()  # strip removes whitespace on front and end #todo: remove (Yaoi)
@@ -63,7 +69,7 @@ def scan_entry(entry):
             item = label.next_sibling
             if item is not None:  # might say "None" or just be blank
                 item = item.text.strip()
-                if item != "None":  #todo: fix whitespace inbtwn (https://www.mangago.me/read-manga/the_evil_empress_loves_me_so_much/)
+                if item != "None":  # todo: fix whitespace inbtwn (https://www.mangago.me/read-manga/the_evil_empress_loves_me_so_much/)
                     alt_titles = item
             break
     return title, url, authors, alt_titles
@@ -72,6 +78,8 @@ def scan_entry(entry):
 # insert entry to table
 def insert_entry(entry, category):
     title, url, authors, alt_titles = scan_entry(entry)
+    if not title:  # (untested) manga no longer exists
+        return False
     items = (title, url, authors, alt_titles)
     with lock:
         conn = create_connection(database)
@@ -84,10 +92,13 @@ def insert_entry(entry, category):
             else:
                 cur.execute("INSERT INTO AlreadyRead(title, url, author, alt_title) VALUES (?,?,?,?)", items)
             conn.commit()
+    return True
 
 
 # grab all manga from category
 def scan_category(category, userid):
+    if userid == 1:  # special account for mgg
+        return False
     init_run = True
     max_page = 1
     page_no = 1
@@ -95,6 +106,8 @@ def scan_category(category, userid):
         url = f"https://www.mangago.me/home/people/{userid}/manga/{category}/?page={page_no}"
         page_no += 1
         soup = bs_webpage(url, 'lxml')
+        if not soup:  # stop if error
+            return False
 
         # find max # of pages
         if init_run:
@@ -108,6 +121,7 @@ def scan_category(category, userid):
             threads = []
             for entry in soup.findAll("h3", attrs={'class': 'title'}):
                 threads.append(executor.submit(insert_entry, entry, category))
+    return True
 
 
 def main():
@@ -116,7 +130,9 @@ def main():
 
     # traverse all categories
     for category in range(1, 4):  # 1: Want, 2: Reading, 3: Already Read
-        scan_category(category, "3306689")
+        if not scan_category(category, "3306689"):
+            print("invalid account")
+            break
 
     end_time = time.time()
     elapsed_time = end_time - start_time
