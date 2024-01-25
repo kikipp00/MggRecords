@@ -1,16 +1,14 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 import sqlite3
+import os
 import mgg
 
 app = Flask(__name__)  # create flask app w/ name "app"
 
 
-"""@app.route('/other')
-def index():
-    conn = mgg.create_connection(mgg.database)
-    posts = conn.execute('SELECT * FROM Want').fetchall()
-    conn.close()
-    return render_template('index.html', posts=posts)"""
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico')
 
 
 @app.route('/')
