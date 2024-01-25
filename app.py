@@ -33,7 +33,12 @@ def data():
             mgg.scan_category(2, form_data['userid'])
         if 'read' in request.form:
             mgg.scan_category(3, form_data['userid'])
-        return render_template('data.html', form_data=form_data)
+
+        conn = mgg.create_connection(mgg.database)
+        with conn:
+            rows = conn.execute('SELECT * FROM Reading').fetchall()
+
+        return render_template('result.html', rows=rows)
 
 
 if __name__ == '__main__':
