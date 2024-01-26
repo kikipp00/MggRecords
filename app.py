@@ -6,6 +6,7 @@ import mgg
 app = Flask(__name__)  # create flask app w/ name "app"
 
 
+# set icon for tabs
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico')
@@ -35,9 +36,14 @@ def data():
         conn = mgg.create_connection(mgg.database)
         with conn:
             rows = conn.execute('SELECT * FROM Reading').fetchall()
+            column_names = [fields[1] for fields in conn.execute("PRAGMA table_info(Reading)").fetchall()]
 
-        return render_template('result.html', rows=rows)
+        return render_template('result.html', rows=rows, column_names=column_names)
 
+
+"""@app.route('/data/<section>')
+def data(section):
+   print section"""
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)  # auto reload

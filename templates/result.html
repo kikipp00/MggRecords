@@ -1,14 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" type="text/css" href="../static/style.css"/>
 </head>
 <body>
-    {% for row in rows %}
-    <tr>
-        {% for data in row %}
-        <td>{{ data }}</td>
-        {% endfor %}
-    </tr><br>
-    {% endfor %}
+<div>
+    <div id="header">
+        <h1>HEADER</h1>
+    </div>
+    <div>
+        <select name="table" id="table-view"> <!-- todo: default to an option -->
+            <option value="Want">Want</option>
+            <option value="Reading">Reading</option>
+            <option value="Read">Read</option>
+        </select>
+        <table>
+            <tr>
+            {% for column in column_names %} <!-- todo: change column sizes -->
+                <th>{{ column }}</th>
+            {% endfor %}
+            </tr>
+            {% for row in rows %}
+            <tr>
+                {% for data in row %}
+                    <td>{{ data }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
 </body>
 </html>
