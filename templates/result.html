@@ -7,13 +7,30 @@
 <div>
     <div id="header">
         <h1>HEADER</h1>
+        <h4>{{ userid }}</h4>
     </div>
     <div>
-        <select name="table" id="table-view"> <!-- todo: default to an option -->
-            <option value="Want">Want</option>
-            <option value="Reading">Reading</option>
-            <option value="Read">Read</option>
-        </select>
+        <form action="{{ url_for('result') }}" method = "GET">
+            <input checked hidden type="checkbox" name="userid" value={{ userid }}> <!-- workaround to pass uid-->
+            <select id="table-view" name="category"}> <!-- todo: default to an option -->
+                {% if category == 'Want' %}
+                    <option selected value="Want">Want</option>
+                    <option value="Reading">Reading</option>
+                    <option value="AlreadyRead">Read</option>
+                {% endif %}
+                {% if category == 'Reading' %}
+                    <option value="Want">Want</option>
+                    <option selected value="Reading">Reading</option>
+                    <option value="AlreadyRead">Read</option>
+                {% endif %}
+                {% if category == 'AlreadyRead' %}
+                    <option value="Want">Want</option>
+                    <option value="Reading">Reading</option>
+                    <option selected value="AlreadyRead">Read</option>
+                {% endif %}
+            </select>
+            <input type="submit" value="Go">
+        </form>
         <table>
             <tr>
             {% for column in column_names %} <!-- todo: change column sizes -->

@@ -19,17 +19,16 @@ def form():
 
 @app.route('/', methods=['POST'])
 def data():
-    form_data = request.form
+    userid = request.form['userid']
     mgg.init_db()
 
-    # todo: loading page
     if 'want' in request.form:
-        mgg.scan_category(1, form_data['userid'])
+        mgg.scan_category(1, userid)
     if 'reading' in request.form:
-        mgg.scan_category(2, form_data['userid'])
+        mgg.scan_category(2, userid)
     if 'read' in request.form:
-        mgg.scan_category(3, form_data['userid'])
-    return redirect(url_for('result'), code=307)
+        mgg.scan_category(3, userid)
+    return redirect(url_for('result', userid=userid, category='Want'), code=307)
 
 
 @app.route('/result', methods=['POST', 'GET'])
@@ -43,10 +42,6 @@ def result():
             column_names = [fields[1] for fields in conn.execute("PRAGMA table_info(Reading)").fetchall()]
         return render_template('result.html', rows=rows, column_names=column_names)
 
-
-"""@app.route('/data/<section>')
-def data(section):
-   print section"""
 
 if __name__ == '__main__':
     app.run(debug=True)  # auto reload
