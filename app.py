@@ -5,7 +5,7 @@ import mgg
 
 app = Flask(__name__)  # create flask app w/ name "app"
 
-
+#test
 # set icon for tabs
 @app.route('/favicon.ico')
 def favicon():
@@ -33,14 +33,12 @@ def data():
 
 @app.route('/result', methods=['POST', 'GET'])
 def result():
-    if request.method == 'GET':
-        return f"The URL /result is accessed directly. Try going to '/result' to submit form"
-    if request.method == 'POST':
-        conn = mgg.create_connection(mgg.database)
-        with conn:
-            rows = conn.execute('SELECT * FROM Reading').fetchall()
-            column_names = [fields[1] for fields in conn.execute("PRAGMA table_info(Reading)").fetchall()]
-        return render_template('result.html', rows=rows, column_names=column_names)
+    conn = mgg.create_connection(mgg.database)
+    with conn:
+        rows = conn.execute(f"SELECT * FROM {request.args.get('category')}").fetchall()
+        column_names = [fields[1] for fields in conn.execute("PRAGMA table_info(Want)").fetchall()]
+    return render_template('result.html', userid=request.args.get('userid'), column_names=column_names, rows=rows,
+                           category=request.args.get('category'))
 
 
 if __name__ == '__main__':
