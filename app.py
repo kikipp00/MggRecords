@@ -1,13 +1,10 @@
 from flask import Flask, render_template, request, send_from_directory, redirect, url_for, send_file, current_app
-import sqlite3
 import os
 import mgg
 
 # todo: timestamp
 # todo: count
 # if access from multiple user simultaneously, they all use same db
-# migrate to postgresql (allows list type)
-# todo: sql parameterizing
 
 app = Flask(__name__)  # create flask app w/ name "app"
 
@@ -42,10 +39,12 @@ def data():
 def result():
     if request.method == 'POST':
         category = request.values.get('category')
-        conn = mgg.create_connection(mgg.database)
+        conn = mgg.create_connection()
+        cur = conn.cursor()
         with conn:
-            rows = conn.execute(f"SELECT * FROM {category}").fetchall()
-            column_names = [fields[1] for fields in conn.execute(f"PRAGMA table_info({category})").fetchall()]
+            cur.execute(f"SELECT * FROM {category} WHERE userid={request.values.get('userid')}")
+            rows = cur.fetchall()
+            column_names = [desc[0] for desc in cur.description]
         return render_template('result.html',
                                userid=request.values.get('userid'),
                                column_names=column_names,
@@ -74,5 +73,5 @@ def download_csv(category):
 
 
 if __name__ == '__main__':
-    #app.run(debug=True)  # auto reload
-    app.run(host="0.0.0.0")
+    app.run(debug=True)  # auto reload
+    #app.run(host="0.0.0.0")
