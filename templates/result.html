@@ -4,15 +4,17 @@
     <link rel="stylesheet" type="text/css" href="../static/style.css"/>
 </head>
 <body>
-<div>
+<div id = "container">
     <div id="header">
         <h1>HEADER</h1>
         <h4>{{ userid }}</h4>
+        <h6>As of {{ time }}</h6>
     </div>
     <div>
-        <form action="{{ url_for('result') }}" method = "GET">
+        <div id="cat-dropdown">
+            <form action="{{ url_for('result') }}" method = "POST">
             <input checked hidden type="checkbox" name="userid" value={{ userid }}> <!-- workaround to pass uid-->
-            <select id="table-view" name="category"}> <!-- todo: default to an option -->
+            <select id="table-view" name="category"} onchange="this.form.submit()"> <!-- reload on dropdown selection -->
                 {% if category == 'Want' %}
                     <option selected value="Want">Want</option>
                     <option value="Reading">Reading</option>
@@ -29,9 +31,13 @@
                     <option selected value="AlreadyRead">Read</option>
                 {% endif %}
             </select>
-            <input type="submit" value="Go">
         </form>
-        <table>
+        </div>
+        <div id="download-csv">
+            <a href="{{ url_for('download_csv', category=category) }}">Download as CSV</a>
+        </div>
+        <div id="cat-table">
+            <table>
             <tr>
             {% for column in column_names %} <!-- todo: change column sizes -->
                 <th>{{ column }}</th>
@@ -45,6 +51,7 @@
             </tr>
             {% endfor %}
         </table>
+        </div>
     </div>
 </div>
 </body>

@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 import sqlite3
 from sqlite3 import Error
+import pandas as pd
 
 # uncomment if ssl error
 # import ssl
@@ -32,6 +33,14 @@ def init_db():
             conn.executescript(f.read())
 
 
+# export sqlite db to csv (category is str)
+def to_csv(category):
+    conn = create_connection(database)
+    db_df = pd.read_sql_query(f"SELECT * FROM {category}", conn)
+    db_df.to_csv(f"{category}.csv", index=False)
+    return f"{category}.csv"
+
+
 # bs parse page
 def bs_webpage(url, parser):
     # Function to fetch webpage content using a given URL and parser
@@ -50,7 +59,7 @@ def scan_entry(entry):
     authors = ""
     alt_titles = ""
     url = entry.find('a')['href']  # get manga link
-    print(url)
+    # print(url)
     soup = bs_webpage(url, 'lxml')
     if not soup:  # stop if error
         return False
@@ -130,7 +139,7 @@ def main():
 
     # traverse all categories
     for category in range(1, 4):  # 1: Want, 2: Reading, 3: Already Read
-        if not scan_category(category, "3306689"):
+        if not scan_category(category, "1"):
             print("invalid account")
             break
 
