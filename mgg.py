@@ -3,9 +3,9 @@ from urllib.request import Request, urlopen
 import time
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import sqlite3
-from sqlite3 import Error
 import pandas as pd
+import psycopg2
+from configparser import ConfigParser
 
 # uncomment if ssl error
 # import ssl
@@ -15,27 +15,42 @@ lock = threading.Lock()
 database = "mgg.db"
 
 
-# create a database connection to a SQLite database
-def create_connection(db_file):
+def config(filename='database.ini', section='postgresql'):
+    parser = ConfigParser()
+    parser.read(filename)
+    db = {}
+    if parser.has_section(section):
+        params = parser.items(section)
+        for param in params:
+            db[param[0]] = param[1]
+    else:
+        raise Exception('Section {0} not found in the {1} file'.format(section, filename))
+    return db
+
+
+# create a database connection to a PostgreSQL database
+def create_connection():
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
-    except Error as e:
+        params = config()
+        conn = psycopg2.connect(**params)
+    except (Exception, psycopg2.DatabaseError) as e:
         print(e)
     return conn
 
 
 # initialize db
 def init_db():
-    conn = create_connection(database)
+    conn = create_connection()
     with conn:
-        with open('schema.sql') as f:
-            conn.executescript(f.read())
+        with open('schema.sql', 'r') as f:
+            conn.cursor().execute(f.read())
 
 
-# export sqlite db to csv (category is str)
+# export PostgreSQL db to csv (category is str)
+# pandas not made for Postgres
 def to_csv(category):
-    conn = create_connection(database)
+    conn = create_connection()
     db_df = pd.read_sql_query(f"SELECT * FROM {category}", conn)
     db_df.to_csv(f"{category}.csv", index=False)
     return f"{category}.csv"
@@ -56,8 +71,8 @@ def bs_webpage(url, parser):
 
 # grab all info from entry
 def scan_entry(entry):
-    authors = ""
-    alt_titles = ""
+    authors = []
+    alt_titles = []
     url = entry.find('a')['href']  # get manga link
     # print(url)
     soup = bs_webpage(url, 'lxml')
@@ -70,36 +85,33 @@ def scan_entry(entry):
         if label.string.strip() == "Author:":
             for item in label.findParent().find_all('a'):  # go back to parent td and get all <a tags
                 if item.text.strip() != "":  # author exists (even when author dne, there is still a <a)
-                    if authors == "":
-                        authors = item.text.strip()
-                    else:
-                        authors += "\n" + item.text.strip()
+                    authors.append(item.text.strip())
         elif label.string.strip() == "Alternative:":
             item = label.next_sibling
             if item is not None:  # might say "None" or just be blank
                 item = item.text.strip()
                 if item != "None":  # todo: fix whitespace inbtwn (https://www.mangago.me/read-manga/the_evil_empress_loves_me_so_much/)
-                    alt_titles = item
+                    alt_titles = [x.strip() for x in item.split(';')]
             break
     return title, url, authors, alt_titles
 
 
 # insert entry to table
-def insert_entry(entry, category):
+def insert_entry(entry, category, userid):
     title, url, authors, alt_titles = scan_entry(entry)
     if not title:  # (untested) manga no longer exists
         return False
-    items = (title, url, authors, alt_titles)
+    items = (userid, title, url, authors, alt_titles)
     with lock:
-        conn = create_connection(database)
+        conn = create_connection()
         with conn:
             cur = conn.cursor()
             if category == 1:
-                cur.execute("INSERT INTO Want(title, url, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO Want(userid, title, url, author, alt_title) VALUES %s", (items,))
             elif category == 2:
-                cur.execute("INSERT INTO Reading(title, url, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO Reading(userid, title, url, author, alt_title) VALUES %s", (items,))
             else:
-                cur.execute("INSERT INTO AlreadyRead(title, url, author, alt_title) VALUES (?,?,?,?)", items)
+                cur.execute("INSERT INTO AlreadyRead(userid, title, url, author, alt_title) VALUES %s", (items,))
             conn.commit()
     return True
 
@@ -129,7 +141,7 @@ def scan_category(category, userid):
         with ThreadPoolExecutor(max_workers=10) as executor:
             threads = []
             for entry in soup.findAll("h3", attrs={'class': 'title'}):
-                threads.append(executor.submit(insert_entry, entry, category))
+                threads.append(executor.submit(insert_entry, entry, category, userid))
     return True
 
 
@@ -138,14 +150,23 @@ def main():
     init_db()
 
     # traverse all categories
-    for category in range(1, 4):  # 1: Want, 2: Reading, 3: Already Read
-        if not scan_category(category, "1"):
+    for category in range(2, 4):  # 1: Want, 2: Reading, 3: Already Read
+        if not scan_category(category, 3306689):
             print("invalid account")
             break
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Elapsed Time: {elapsed_time} seconds")
+
+    conn = create_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM Reading")
+    rs = cur.fetchall()
+    for row in rs:
+        print(row)
+
+    to_csv("Reading")
 
 
 if __name__ == "__main__":
